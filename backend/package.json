@@ -6,7 +6,8 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-  "build": "npx nest build",
+  "build": "tsc -p tsconfig.build.json"
+,
   "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
   "start": "npx nest start",
   "start:dev": "npx nest start --watch",
