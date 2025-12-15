@@ -584,6 +584,39 @@ Proprietary - RENTALL Software © 2025
 - [x] README with setup instructions
 - [x] Design documentation
 
+
+
+
+
+## 🌐 Deployment
+
+### Backend (Hosted on Render)
+
+The backend API is deployed on Render and publicly accessible:
+
+- *Base URL*  
+  https://rentall-backend-lw71.onrender.com
+
+- 
+
+
+
+
 ---
+### Assumptions
+Pricing logic is simplified (flat daily & mileage rates)
+Overbooking is allowed but flagged
+No authentication/authorization
+Single-tenant system
+AI auto-assign uses deterministic logic (no ML)
+Payments and notifications are out of scope
+
+
+#### Simplifications:
+A separate Postman / Thunder Client collection is not included, as:
+Swagger provides full, interactive request examples
+Sample requests are documented in this README
+The assignment explicitly marks API collections as optional
+If required, a Postman or Thunder Client collection can be generated easily from the Swagger definition.
 
 **Built with ❤️ for RENTALL Software**
