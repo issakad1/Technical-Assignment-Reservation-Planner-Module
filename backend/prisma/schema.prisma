@@ -1,0 +1,213 @@
+// This is your Prisma schema file
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum definitions
+enum ReservationStatus {
+  QUOTE
+  CONFIRMED
+  CHECKED_OUT
+  COMPLETED
+  CANCELLED
+}
+
+enum AuditAction {
+  CREATED
+  MODIFIED
+  VEHICLE_ASSIGNED
+  VEHICLE_UNASSIGNED
+  STATUS_CHANGED
+  CANCELLED
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+// Main entities
+model Customer {
+  id            Int           @id @default(autoincrement())
+  firstName     String
+  lastName      String
+  email         String        @unique
+  phone         String
+  licenseNumber String
+  address       String?
+  city          String?
+  state         String?
+  zipCode       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  reservations  Reservation[]
+  
+  @@index([email])
+  @@map("customers")
+}
+
+model VehicleClass {
+  id              Int           @id @default(autoincrement())
+  name            String        @unique
+  description     String?
+  dailyRate       Decimal       @db.Decimal(10, 2)
+  weeklyRate      Decimal?      @db.Decimal(10, 2)
+  monthlyRate     Decimal?      @db.Decimal(10, 2)
+  mileageRate     Decimal       @db.Decimal(10, 2)
+  capacity        Int
+  features        String[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  vehicles        Vehicle[]
+  reservations    Reservation[]
+  
+  @@map("vehicle_classes")
+}
+
+model Location {
+  id                    Int           @id @default(autoincrement())
+  code                  String        @unique
+  name                  String
+  address               String
+  city                  String
+  state                 String
+  zipCode               String
+  phone                 String
+  email                 String?
+  operatingHours        String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  
+  vehiclesAtLocation    Vehicle[]
+  reservationsOut       Reservation[] @relation("PickupLocation")
+  reservationsDue       Reservation[] @relation("DropoffLocation")
+  
+  @@index([code])
+  @@map("locations")
+}
+
+model Vehicle {
+  id                Int               @id @default(autoincrement())
+  unitNumber        String            @unique
+  make              String
+  model             String
+  year              Int
+  color             String
+  vin               String            @unique
+  licensePlate      String
+  mileage           Int
+  status            VehicleStatus     @default(AVAILABLE)
+  vehicleClassId    Int
+  locationId        Int
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  vehicleClass      VehicleClass      @relation(fields: [vehicleClassId], references: [id])
+  location          Location          @relation(fields: [locationId], references: [id])
+  reservations      Reservation[]
+  
+  @@index([vehicleClassId])
+  @@index([locationId])
+  @@index([status])
+  @@index([unitNumber])
+  @@map("vehicles")
+}
+
+model RateHead {
+  id              Int           @id @default(autoincrement())
+  code            String        @unique
+  name            String
+  description     String?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  reservations    Reservation[]
+  
+  @@map("rate_heads")
+}
+
+model Reservation {
+  id                  Int                     @id @default(autoincrement())
+  reservationNumber   String                  @unique
+  customerId          Int
+  vehicleClassId      Int
+  vehicleId           Int?
+  reservationStatus   ReservationStatus       @default(QUOTE)
+  dateOut             DateTime
+  dateDue             DateTime
+  locationCodeOut     String
+  locationCodeDue     String
+  rateCode            String
+  estimatedTotal      Decimal                 @db.Decimal(10, 2)
+  estimatedMiles      Int?
+  estimatedDays       Decimal                 @db.Decimal(10, 2)
+  notes               String?
+  customerNotes       String?
+  createdBy           String
+  modifiedBy          String
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  
+  customer            Customer                @relation(fields: [customerId], references: [id])
+  vehicleClass        VehicleClass            @relation(fields: [vehicleClassId], references: [id])
+  vehicle             Vehicle?                @relation(fields: [vehicleId], references: [id])
+  pickupLocation      Location                @relation("PickupLocation", fields: [locationCodeOut], references: [code])
+  dropoffLocation     Location                @relation("DropoffLocation", fields: [locationCodeDue], references: [code])
+  rateHead            RateHead                @relation(fields: [rateCode], references: [code])
+  auditLogs           ReservationAuditLog[]
+  
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([vehicleClassId])
+  @@index([reservationStatus])
+  @@index([reservationNumber])
+  @@index([locationCodeOut, dateOut, dateDue])
+  @@index([dateOut, dateDue])
+  @@map("reservations")
+}
+
+model ReservationAuditLog {
+  id              Int           @id @default(autoincrement())
+  reservationId   Int
+  action          AuditAction
+  oldValues       Json?
+  newValues       Json
+  changedBy       String
+  changedAt       DateTime      @default(now())
+  
+  reservation     Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  
+  @@index([reservationId])
+  @@index([changedAt])
+  @@map("reservation_audit_logs")
+}
+
+// AI Analytics table for tracking usage patterns
+model VehicleClassAnalytics {
+  id                    Int       @id @default(autoincrement())
+  vehicleClassId        Int
+  date                  DateTime
+  totalReservations     Int
+  totalRevenue          Decimal   @db.Decimal(10, 2)
+  utilizationRate       Decimal   @db.Decimal(5, 2)
+  averageRentalDays     Decimal   @db.Decimal(10, 2)
+  overbookingCount      Int
+  cancellationRate      Decimal   @db.Decimal(5, 2)
+  createdAt             DateTime  @default(now())
+  
+  @@unique([vehicleClassId, date])
+  @@index([date])
+  @@map("vehicle_class_analytics")
+}

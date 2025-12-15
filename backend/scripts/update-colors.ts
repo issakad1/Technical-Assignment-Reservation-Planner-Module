@@ -1,0 +1,71 @@
+import { PrismaClient, ReservationStatus } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function updateReservationStatuses() {
+  console.log('🎨 Updating reservation statuses to show color variety...\n');
+
+  try {
+    // Update RES-2025-00001 to CHECKED_OUT (GREEN)
+    const res1 = await prisma.reservation.update({
+      where: { id: 22 },
+      data: {
+        reservationStatus: ReservationStatus.CHECKED_OUT,
+        modifiedBy: 'color-demo-script',
+      },
+    });
+    console.log(`✅ ${res1.reservationNumber} → CHECKED_OUT (🟢 GREEN)`);
+
+    // Update RES-2025-00008 to CHECKED_OUT (GREEN)
+    const res2 = await prisma.reservation.update({
+      where: { id: 25 },
+      data: {
+        reservationStatus: ReservationStatus.CHECKED_OUT,
+        modifiedBy: 'color-demo-script',
+      },
+    });
+    console.log(`✅ ${res2.reservationNumber} → CHECKED_OUT (🟢 GREEN)`);
+
+    // RES-2025-00023 is already QUOTE (PURPLE) - leave it
+    console.log(`✅ RES-2025-00023 → QUOTE (🟣 PURPLE) - already set`);
+
+    // Update RES-2025-00027 to CANCELLED (RED)
+    const res3 = await prisma.reservation.update({
+      where: { reservationNumber: 'RES-2025-00027' },
+      data: {
+        reservationStatus: ReservationStatus.CANCELLED,
+        modifiedBy: 'color-demo-script',
+      },
+    });
+    console.log(`✅ ${res3.reservationNumber} → CANCELLED (🔴 RED)`);
+
+    // Update RES-2025-00031 to COMPLETED (DARK GREEN)
+    const res4 = await prisma.reservation.update({
+      where: { id: 28 },
+      data: {
+        reservationStatus: ReservationStatus.COMPLETED,
+        modifiedBy: 'color-demo-script',
+      },
+    });
+    console.log(`✅ ${res4.reservationNumber} → COMPLETED (🟢 DARK GREEN)`);
+
+    // Keep others as CONFIRMED (BLUE)
+    console.log(`✅ Other reservations → CONFIRMED (🔵 BLUE)`);
+
+    console.log('\n🎉 Status updates complete!\n');
+    console.log('Color Legend:');
+    console.log('🟢 GREEN (emerald-600) = CHECKED_OUT');
+    console.log('🟢 DARK GREEN (emerald-700) = COMPLETED');
+    console.log('🟣 PURPLE (purple-500) = QUOTE');
+    console.log('🔵 BLUE (blue-500) = CONFIRMED');
+    console.log('🔴 RED (red-500) = CANCELLED');
+    console.log('\n📊 Refresh your browser to see the colorful timeline!');
+
+  } catch (error) {
+    console.error('❌ Error updating statuses:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+updateReservationStatuses();
