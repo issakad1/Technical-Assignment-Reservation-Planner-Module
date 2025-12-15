@@ -1,6 +1,7 @@
 FROM node:18-alpine
 
-RUN apk add --no-cache openssl1.1-compat
+# Install OpenSSL 3 (compatible with Alpine 3.21)
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 
