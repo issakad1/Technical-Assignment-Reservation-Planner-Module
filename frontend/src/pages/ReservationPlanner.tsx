@@ -8,6 +8,17 @@ const ReservationPlanner = () => {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedVehicleClass, setSelectedVehicleClass] = useState('');
 
+  // Helper function to convert UTC date to local date (fixes timezone offset)
+  const utcToLocalDate = (utcDateString: string): string => {
+    const utcDate = new Date(utcDateString);
+    // Get local date components
+    const year = utcDate.getFullYear();
+    const month = String(utcDate.getMonth() + 1).padStart(2, '0');
+    const day = String(utcDate.getDate()).padStart(2, '0');
+    // Return as local date string
+    return `${year}-${month}-${day}T00:00:00.000Z`;
+  };
+
   // Fetch schedule data
   const { data: scheduleData, isLoading, refetch } = useQuery({
     queryKey: ['schedule', selectedLocation, selectedVehicleClass, startDate, endDate],
@@ -19,7 +30,29 @@ const ReservationPlanner = () => {
         ...(selectedVehicleClass && { vehicleClassId: selectedVehicleClass }),
       });
       const response = await fetch(`http://localhost:3001/api/v1/reservations/schedule?${params}`);
-      return response.json();
+      const data = await response.json();
+      
+      // Fix timezone for all reservations
+      if (data.vehicles) {
+        data.vehicles = data.vehicles.map((vehicle: any) => ({
+          ...vehicle,
+          reservations: vehicle.reservations?.map((res: any) => ({
+            ...res,
+            dateOut: utcToLocalDate(res.dateOut),
+            dateDue: utcToLocalDate(res.dateDue),
+          })) || []
+        }));
+      }
+      
+      if (data.unassignedReservations) {
+        data.unassignedReservations = data.unassignedReservations.map((res: any) => ({
+          ...res,
+          dateOut: utcToLocalDate(res.dateOut),
+          dateDue: utcToLocalDate(res.dateDue),
+        }));
+      }
+      
+      return data;
     },
   });
 
@@ -47,17 +80,17 @@ const ReservationPlanner = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'CHECKED_OUT':
-        return 'bg-emerald-600'; // Dark green for checked out
+        return 'bg-green-600'; // Green like RES-001 in demo
       case 'QUOTE':
-        return 'bg-purple-500'; // Purple for quotes
+        return 'bg-fuchsia-600'; // Magenta/Purple like RES-023 in demo
       case 'CONFIRMED':
-        return 'bg-blue-500'; // Blue for confirmed
+        return 'bg-blue-600'; // Blue like RES-012, RES-034, RES-031 in demo
       case 'COMPLETED':
-        return 'bg-emerald-700'; // Darker green for completed
+        return 'bg-green-700'; // Darker green for completed
       case 'CANCELLED':
-        return 'bg-red-500'; // Red for cancelled
+        return 'bg-red-600'; // Red like RES-019, RES-027 in demo
       default:
-        return 'bg-blue-500';
+        return 'bg-blue-600';
     }
   };
 
@@ -272,22 +305,22 @@ const ReservationPlanner = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex">
+      <div className="flex h-[calc(100vh-250px)]">
         {/* Timeline Grid */}
-        <div className="flex-1 overflow-x-auto">
+        <div className="flex-1 overflow-x-auto overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-96">
               <div className="text-gray-500">Loading schedule...</div>
             </div>
           ) : (
-            <div className="min-w-max">
+            <div className="inline-block min-w-full">
               {/* Date Headers */}
-              <div className="flex bg-white border-b sticky top-0 z-10">
-                <div className="w-48 px-4 py-3 font-semibold text-sm border-r bg-gray-50">
+              <div className="flex bg-white border-b sticky top-0 z-10" style={{ minWidth: 'max-content' }}>
+                <div className="w-56 px-4 py-3 font-semibold text-sm border-r bg-gray-50 flex-shrink-0">
                   UNIT NUMBER
                 </div>
                 {dateColumns.map((date) => (
-                  <div key={date.toString()} className="w-40 px-4 py-3 text-center border-r">
+                  <div key={date.toString()} className="w-40 px-4 py-3 text-center border-r flex-shrink-0">
                     <div className="font-semibold text-sm">{format(date, 'M/d')}</div>
                     <div className="text-xs text-gray-500">{format(date, 'EEE')}</div>
                   </div>
@@ -296,17 +329,17 @@ const ReservationPlanner = () => {
 
               {/* Vehicle Rows */}
               {scheduleData?.vehicles?.map((vehicle: any) => (
-                <div key={vehicle.id} className="flex border-b hover:bg-gray-50">
-                  <div className="w-48 px-4 py-3 border-r">
+                <div key={vehicle.id} className="flex border-b hover:bg-gray-50" style={{ minWidth: 'max-content' }}>
+                  <div className="w-56 px-4 py-3 border-r flex-shrink-0">
                     <div className="font-semibold text-sm">{vehicle.unitNumber}</div>
                     <div className="text-xs text-gray-600">
                       {vehicle.make} {vehicle.model}
                     </div>
                     <div className="text-xs text-gray-500">{vehicle.vehicleClass.name}</div>
                   </div>
-                  <div className="flex flex-1 relative">
+                  <div className="flex flex-1 relative" style={{ minWidth: `${dateColumns.length * 160}px` }}>
                     {dateColumns.map((date) => (
-                      <div key={date.toString()} className="w-40 border-r border-gray-200"></div>
+                      <div key={date.toString()} className="w-40 border-r border-gray-200 flex-shrink-0"></div>
                     ))}
                     {/* Reservation Cards */}
                     {vehicle.reservations?.map((reservation: any) => {
